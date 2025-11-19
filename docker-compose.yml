@@ -1,0 +1,58 @@
+# ==============================================================================
+# Docker Compose
+# ==============================================================================#
+# Services:
+#   - postgres: AdventureWorks sample database (5 schemas, 68 tables)
+#
+# Networks:
+#   - jerry-network: Bridge network for container communication
+#     Allows spark-master to connect to postgres by service name
+#
+# Volumes:
+#   - postgres-data: Persists database across container restarts
+#
+# Usage:
+#   docker-compose up --build    # First time or after dependency changes
+#   docker-compose up            # Subsequent starts
+#   docker-compose down          # Stop and remove containers
+#   docker-compose down -v       # Also remove volumes (fresh start)
+#
+# Ports:
+#   - 5432: Postgres database (accessible from host)
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL database with AdventureWorks sample data
+  postgres:
+    image: postgres:15
+    container_name: anfora-postgres
+    environment:
+      POSTGRES_DB: AdventureWorks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # Mount the AdventureWorks SQL script to initialize the database
+      # The init script will be run automatically when the container starts
+      - ./adventureworks-data:/docker-entrypoint-initdb.d
+      # Persist database data across container restarts
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jerry-network
+
+# Named volumes for persistent database data
+volumes:
+  postgres-data:
+
+# Custom network for inter-container communication
+networks:
+  jerry-network:
+    driver: bridge

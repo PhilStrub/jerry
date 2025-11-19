@@ -1,0 +1,29 @@
+[project]
+name = "anfora-data-plane"
+version = "0.1.0"
+description = "Data plane for Anfora - Spark-based data processing and API server"
+requires-python = ">=3.11"
+dependencies = [
+    "pyspark>=4.0.0",
+    "delta-spark>=4.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "psycopg2-binary>=2.9.9",
+    "pydantic>=2.5.0",
+    "pymongo>=4.6.0",
+    "requests>=2.31.0",
+]
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.0.0",
+    "ipython>=8.18.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["src"]
+
