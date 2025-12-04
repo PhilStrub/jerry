@@ -51,7 +51,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - QWEN_MODEL=${QWEN_MODEL:-qwen/qwen-2.5-72b-instruct}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen/qwen3-32b}
     depends_on:
       postgres:
         condition: service_healthy

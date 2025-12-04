@@ -370,10 +370,11 @@ When the user asks to check emails or respond to emails, follow this exact workf
 1. Use fetch_emails to get unread emails (this will show message IDs)
 2. For each email that needs a response:
    a. Draft a professional, appropriate response based on the email content
-   b. Present the draft to the user with clear formatting
-   c. Ask: "Would you like me to send this response? Reply 'yes' to send or suggest changes."
-   d. ONLY use reply_to_email (with the message_id from fetch_emails) if the user explicitly approves
-   e. The reply_to_email function will automatically:
+   b. **SIGNATURE RULE**: ALWAYS sign the email as "AdventureWorks Agent". NEVER use placeholders like "[Your Name]" or "[Your Title]".
+   c. Present the draft to the user with clear formatting
+   d. Ask: "Would you like me to send this response? Reply 'yes' to send or suggest changes."
+   e. ONLY use reply_to_email (with the message_id from fetch_emails) if the user explicitly approves
+   f. The reply_to_email function will automatically:
       - Create a threaded reply (not a new email)
       - Mark the original email as read
       - Use proper email headers (In-Reply-To, References)
@@ -384,6 +385,20 @@ When the user asks to check emails or respond to emails, follow this exact workf
 1. First use list_tables to see available tables
 2. Use describe_table to understand the schema
 3. Then use query_database with a SELECT statement
+
+**KEY TABLES SCHEMA (FALLBACK):**
+Use these table definitions if the specific "recipes" above don't cover the user's request.
+
+*   **Person.Person**: `BusinessEntityID` (PK), `PersonType`, `NameStyle`, `Title`, `FirstName`, `MiddleName`, `LastName`, `Suffix`, `EmailPromotion`, `AdditionalContactInfo`, `Demographics`, `rowguid`, `ModifiedDate`
+*   **Person.EmailAddress**: `BusinessEntityID` (FK), `EmailAddressID` (PK), `EmailAddress`, `rowguid`, `ModifiedDate`
+*   **HumanResources.Employee**: `BusinessEntityID` (PK, FK), `NationalIDNumber`, `LoginID`, `OrganizationNode`, `OrganizationLevel`, `JobTitle`, `BirthDate`, `MaritalStatus`, `Gender`, `HireDate`, `SalariedFlag`, `VacationHours`, `SickLeaveHours`, `CurrentFlag`, `rowguid`, `ModifiedDate`
+*   **HumanResources.Department**: `DepartmentID` (PK), `Name`, `GroupName`, `ModifiedDate`
+*   **HumanResources.EmployeeDepartmentHistory**: `BusinessEntityID` (PK, FK), `DepartmentID` (PK, FK), `ShiftID` (PK, FK), `StartDate` (PK), `EndDate`, `ModifiedDate`
+*   **Production.Product**: `ProductID` (PK), `Name`, `ProductNumber`, `MakeFlag`, `FinishedGoodsFlag`, `Color`, `SafetyStockLevel`, `ReorderPoint`, `StandardCost`, `ListPrice`, `Size`, `SizeUnitMeasureCode`, `WeightUnitMeasureCode`, `Weight`, `DaysToManufacture`, `ProductLine`, `Class`, `Style`, `ProductSubcategoryID`, `ProductModelID`, `SellStartDate`, `SellEndDate`, `DiscontinuedDate`, `rowguid`, `ModifiedDate`
+*   **Production.ProductInventory**: `ProductID` (PK, FK), `LocationID` (PK, FK), `Shelf`, `Bin`, `Quantity`, `rowguid`, `ModifiedDate`
+*   **Sales.SalesOrderHeader**: `SalesOrderID` (PK), `RevisionNumber`, `OrderDate`, `DueDate`, `ShipDate`, `Status`, `OnlineOrderFlag`, `SalesOrderNumber`, `PurchaseOrderNumber`, `AccountNumber`, `CustomerID`, `SalesPersonID`, `TerritoryID`, `BillToAddressID`, `ShipToAddressID`, `ShipMethodID`, `CreditCardID`, `CreditCardApprovalCode`, `CurrencyRateID`, `SubTotal`, `TaxAmt`, `Freight`, `TotalDue`, `Comment`, `rowguid`, `ModifiedDate`
+*   **Sales.SalesOrderDetail**: `SalesOrderID` (PK, FK), `SalesOrderDetailID` (PK), `CarrierTrackingNumber`, `OrderQty`, `ProductID`, `SpecialOfferID`, `UnitPrice`, `UnitPriceDiscount`, `LineTotal`, `rowguid`, `ModifiedDate`
+*   **Sales.Customer**: `CustomerID` (PK), `PersonID` (FK), `StoreID` (FK), `TerritoryID` (FK), `AccountNumber`, `rowguid`, `ModifiedDate`
 
 Always be helpful, concise, and accurate. If you're unsure, ask for clarification."""
 
@@ -400,7 +415,7 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
     
     # Initialize LLM (Qwen via OpenRouter)
     llm = ChatOpenAI(
-        model=os.getenv("QWEN_MODEL", "qwen/qwen-2.5-72b-instruct"),
+        model=os.getenv("QWEN_MODEL", "qwen/qwen3-32b"),
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
         openai_api_base="https://openrouter.ai/api/v1",
         temperature=0.7,

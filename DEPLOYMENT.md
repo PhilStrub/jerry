@@ -69,7 +69,7 @@ Make sure to set up your `.env` file with:
 
 ```bash
 OPENROUTER_API_KEY=your_api_key_here
-QWEN_MODEL=qwen/qwen-2.5-72b-instruct
+QWEN_MODEL=qwen/qwen3-32b
 ```
 
 ---
