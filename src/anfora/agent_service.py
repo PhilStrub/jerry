@@ -184,7 +184,7 @@ def fetch_emails(limit: int = 5) -> str:
         limit: The maximum number of emails to retrieve (default: 5, max: 20).
         
     Returns:
-        A formatted string with email details (subject, sender, snippet).
+        A formatted string with email details including message IDs for replying.
     """
     try:
         limit = min(limit, 20)  # Cap at 20 for safety
@@ -201,7 +201,7 @@ def fetch_emails(limit: int = 5) -> str:
             return "No unread emails found in inbox."
         
         email_list = []
-        for msg in messages:
+        for i, msg in enumerate(messages, 1):
             msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
             payload = msg_data['payload']
             headers = payload.get('headers', [])
@@ -209,8 +209,14 @@ def fetch_emails(limit: int = 5) -> str:
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown Sender')
             snippet = msg_data.get('snippet', '')
+            message_id = msg['id']
             
-            email_list.append(f"From: {sender}\nSubject: {subject}\nSnippet: {snippet}\n")
+            email_list.append(
+                f"**Email {i}:** (Message ID: {message_id})\n"
+                f"From: {sender}\n"
+                f"Subject: {subject}\n"
+                f"Snippet: {snippet}\n"
+            )
         
         return f"Found {len(email_list)} unread emails:\n\n" + "\n---\n".join(email_list)
     except Exception as e:
@@ -218,8 +224,73 @@ def fetch_emails(limit: int = 5) -> str:
         return f"Error fetching emails: {str(e)}"
 
 @tool
+def reply_to_email(message_id: str, body: str) -> str:
+    """Reply to an email using Gmail. This creates a threaded reply and marks the original as read.
+    
+    Args:
+        message_id: The Gmail message ID to reply to (from fetch_emails).
+        body: The body text of the reply.
+        
+    Returns:
+        Success message or error message.
+    """
+    try:
+        service = get_gmail_service()
+        
+        # Get the original message to extract headers
+        original_msg = service.users().messages().get(userId='me', id=message_id).execute()
+        headers = original_msg['payload'].get('headers', [])
+        
+        # Extract necessary headers for threading
+        original_subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), 'No Subject')
+        original_from = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+        original_message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
+        references = next((h['value'] for h in headers if h['name'].lower() == 'references'), '')
+        
+        # Extract email address from "Name <email@domain.com>" format
+        import re
+        email_match = re.search(r'<(.+?)>', original_from)
+        to_address = email_match.group(1) if email_match else original_from
+        
+        # Create reply message
+        message = EmailMessage()
+        message.set_content(body)
+        message['To'] = to_address
+        message['Subject'] = original_subject if original_subject.startswith('Re:') else f'Re: {original_subject}'
+        
+        # Add threading headers
+        if original_message_id_header:
+            message['In-Reply-To'] = original_message_id_header
+            # Build References header (original references + original message ID)
+            if references:
+                message['References'] = f"{references} {original_message_id_header}"
+            else:
+                message['References'] = original_message_id_header
+        
+        # Encode and send
+        encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+        create_message = {
+            'raw': encoded_message,
+            'threadId': original_msg.get('threadId')  # Keep in same thread
+        }
+        
+        send_message = service.users().messages().send(userId="me", body=create_message).execute()
+        
+        # Mark original message as read
+        service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'removeLabelIds': ['UNREAD']}
+        ).execute()
+        
+        return f"Reply sent successfully to {to_address}! The original email has been marked as read. Message ID: {send_message['id']}"
+    except Exception as e:
+        logger.error(f"Error replying to email: {str(e)}")
+        return f"Failed to reply to email: {str(e)}"
+
+@tool
 def send_email(to: str, subject: str, body: str) -> str:
-    """Send an email using Gmail.
+    """Send a NEW email using Gmail (not a reply). Use reply_to_email for replying to existing emails.
     
     Args:
         to: The recipient's email address.
@@ -260,36 +331,54 @@ You can help users with:
 
 **DATABASE KNOWLEDGE - USE THIS FOR QUERIES:**
 
-1. **Finding People & Contact Info:**
-   - Tables: `Person.Person` (p), `Person.EmailAddress` (e), `Person.PersonPhone` (ph)
-   - Join: `p.BusinessEntityID = e.BusinessEntityID` AND `p.BusinessEntityID = ph.BusinessEntityID`
-   - Columns: `p.FirstName`, `p.LastName`, `e.EmailAddress`, `ph.PhoneNumber`
+1. **Finding Products & Inventory (CRITICAL):**
+   - **Tables**: `production.product` (p), `production.productinventory` (i), `production.productmodel` (pm)
+   - **Join**: `p.productid = i.productid` AND `p.productmodelid = pm.productmodelid`
+   - **Finding Variants**: If a user asks for a product (e.g., "Mountain-100"), you MUST check for variants (Size, Color).
+     - Query: `SELECT p.name, p.productnumber, p.color, p.size, p.listprice, i.quantity FROM production.product p JOIN production.productinventory i ON p.productid = i.productid WHERE p.name LIKE '%Mountain-100%'`
+   - **Columns**: `p.Name`, `p.ProductNumber`, `p.Color`, `p.Size`, `p.ListPrice`, `i.Quantity`
 
-2. **Finding Employees & Departments (for Support/Routing):**
-   - Tables: `HumanResources.Employee` (emp), `HumanResources.EmployeeDepartmentHistory` (edh), `HumanResources.Department` (dept), `Person.Person` (p)
-   - Join: `emp.BusinessEntityID = p.BusinessEntityID` AND `emp.BusinessEntityID = edh.BusinessEntityID` AND `edh.DepartmentID = dept.DepartmentID`
-   - Filter: `edh.EndDate IS NULL` (current department)
-   - Columns: `p.FirstName`, `p.LastName`, `dept.Name` (Department), `emp.JobTitle`
-   - **Routing Logic:**
-     - "Bike problem" -> Look for 'Engineering' or 'Production' departments
-     - "Sales question" -> Look for 'Sales' department
-     - "Billing/Money" -> Look for 'Finance' department
+2. **Finding People & Contact Info (Directory):**
+   - **Tables**: `person.person` (p), `person.emailaddress` (e), `humanresources.employee` (emp), `humanresources.employeedepartmenthistory` (edh), `humanresources.department` (dept)
+   - **Join**: 
+     - `p.businessentityid = emp.businessentityid`
+     - `p.businessentityid = e.businessentityid`
+     - `emp.businessentityid = edh.businessentityid`
+     - `edh.departmentid = dept.departmentid`
+   - **Filter**: `edh.enddate IS NULL` (current department)
+   - **Routing Logic (Who to talk to):**
+     - "Billing/Money/Invoice" -> `dept.name = 'Finance'`
+     - "Technical/Bike Issues" -> `dept.name = 'Engineering'` or `dept.name = 'Production'`
+     - "Sales/Orders" -> `dept.name = 'Sales'`
+     - "Hiring/Jobs" -> `dept.name = 'Human Resources'`
+   - **Query Pattern**: `SELECT p.firstname, p.lastname, e.emailaddress, dept.name as department, emp.jobtitle FROM person.person p JOIN humanresources.employee emp ON p.businessentityid = emp.businessentityid JOIN humanresources.employeedepartmenthistory edh ON emp.businessentityid = edh.businessentityid JOIN humanresources.department dept ON edh.departmentid = dept.departmentid JOIN person.emailaddress e ON p.businessentityid = e.businessentityid WHERE edh.enddate IS NULL AND dept.name = 'TargetDept'`
 
-3. **Finding Products:**
-   - Tables: `Production.Product` (prod), `Production.ProductDescription` (desc), `Production.ProductModelProductDescriptionCulture` (pm)
-   - Join: `prod.ProductModelID = pm.ProductModelID` AND `pm.ProductDescriptionID = desc.ProductDescriptionID`
-   - Filter: `pm.CultureID = 'en'` (English descriptions)
-   - Columns: `prod.Name`, `prod.ProductNumber`, `desc.Description`, `prod.ListPrice`
+3. **Sales & Orders:**
+   - **Tables**: `sales.salesorderheader` (soh), `sales.salesorderdetail` (sod), `sales.customer` (c), `person.person` (p)
+   - **Join**: `soh.salesorderid = sod.salesorderid` AND `soh.customerid = c.customerid` AND `c.personid = p.businessentityid`
+   - **Columns**: `soh.salesordernumber`, `soh.orderdate`, `soh.status`, `soh.totaldue`
+
+**RULES OF ENGAGEMENT - FOLLOW STRICTLY:**
+
+1. **ALWAYS QUERY FIRST**: Before answering ANY factual question about business data (products, people, orders), you MUST run a SQL query. Do not guess.
+2. **CHECK VARIANTS**: When asked about a product, always assume there might be multiple versions (sizes, colors). List them all.
+3. **HANDLE AMBIGUITY**: If a query returns too many results or no results, or if the user's request is vague (e.g., "the bike"), DO NOT GUESS. Ask the user for clarification (e.g., "Which model? We have Mountain-100 and Road-250").
+4. **ROUTING**: When asked "who should I talk to", find a real person in the relevant department using the directory query above. Provide their name and email.
 
 **EMAIL WORKFLOW - VERY IMPORTANT:**
 When the user asks to check emails or respond to emails, follow this exact workflow:
-1. Use fetch_emails to get unread emails
+1. Use fetch_emails to get unread emails (this will show message IDs)
 2. For each email that needs a response:
    a. Draft a professional, appropriate response based on the email content
    b. Present the draft to the user with clear formatting
    c. Ask: "Would you like me to send this response? Reply 'yes' to send or suggest changes."
-   d. ONLY use send_email if the user explicitly approves (says yes/approve/send)
-3. Never send an email without explicit user approval
+   d. ONLY use reply_to_email (with the message_id from fetch_emails) if the user explicitly approves
+   e. The reply_to_email function will automatically:
+      - Create a threaded reply (not a new email)
+      - Mark the original email as read
+      - Use proper email headers (In-Reply-To, References)
+3. Use send_email ONLY for brand new emails (not replies)
+4. Never send an email without explicit user approval
 
 **Database Workflow:**
 1. First use list_tables to see available tables
@@ -323,7 +412,8 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
         list_tables,
         describe_table,
         fetch_emails,
-        send_email,
+        reply_to_email,  # For replying to existing emails
+        send_email,      # For sending new emails
     ]
     
     # Create prompt template

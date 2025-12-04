@@ -11,13 +11,13 @@ interface Message {
 // Custom components to style the Markdown elements nicely
 const MarkdownComponents = {
     // Style paragraphs to avoid huge gaps inside bubbles
-    p: ({ node, ...props }: any) => <p className="mb-2 last:mb-0" {...props} />,
+    p: ({ node, ...props }: any) => <p className="mb-2 last:mb-0 text-gray-900" {...props} />,
     // Bold text styling
-    strong: ({ node, ...props }: any) => <span className="font-bold text-blue-900 dark:text-blue-300" {...props} />,
+    strong: ({ node, ...props }: any) => <span className="font-bold text-gray-900" {...props} />,
     // List styling
     ul: ({ node, ...props }: any) => <ul className="list-disc list-inside ml-2 mb-2 space-y-1" {...props} />,
     ol: ({ node, ...props }: any) => <ol className="list-decimal list-inside ml-2 mb-2 space-y-1" {...props} />,
-    li: ({ node, ...props }: any) => <li className="text-gray-800 dark:text-gray-100" {...props} />,
+    li: ({ node, ...props }: any) => <li className="text-gray-900 marker:text-gray-900" {...props} />,
     // Code block styling
     code: ({ node, inline, className, children, ...props }: any) => {
         return !inline ? (
@@ -33,7 +33,7 @@ const MarkdownComponents = {
     // Tables (Note: Tables might render as plain text without remark-gfm, but basic styling is here just in case)
     table: ({ node, ...props }: any) => <div className="overflow-x-auto my-4"><table className="min-w-full divide-y divide-gray-300 border border-gray-300" {...props} /></div>,
     th: ({ node, ...props }: any) => <th className="bg-gray-100 px-3 py-2 text-left text-sm font-semibold text-gray-900" {...props} />,
-    td: ({ node, ...props }: any) => <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 border-t border-gray-200" {...props} />,
+    td: ({ node, ...props }: any) => <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900 border-t border-gray-200" {...props} />,
 };
 
 export default function Chat() {
@@ -110,7 +110,7 @@ export default function Chat() {
 
     return (
         // Main Container: h-[100dvh] ensures full height on mobile browsers (ignoring address bar issues)
-        <div className="flex flex-col h-[100dvh] bg-gray-50 font-sans text-gray-900">
+        <div className="flex flex-col h-[100dvh] bg-white font-sans text-gray-900">
 
             {/* Header */}
             <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm z-10 flex-none">
@@ -120,7 +120,7 @@ export default function Chat() {
                     </div>
                     <div>
                         <h1 className="text-base font-bold text-gray-900 leading-tight">AdventureWorks Agent</h1>
-                        <p className="text-xs text-gray-500 font-medium">Powered by Qwen 2.5</p>
+                        <p className="text-xs text-gray-600 font-medium">Powered by Qwen 2.5</p>
                     </div>
                 </div>
             </header>
@@ -133,14 +133,14 @@ export default function Chat() {
                         <div className="flex flex-col items-center justify-center text-center mt-12 px-4">
                             <div className="text-6xl mb-6 animate-pulse">👋</div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-3">Welcome to AdventureWorks</h2>
-                            <p className="text-gray-500 mb-8 max-w-md leading-relaxed">
+                            <p className="text-gray-700 mb-8 max-w-md leading-relaxed">
                                 I can help you query the database, find contacts, or draft emails.
                                 <br className="hidden sm:block" /> Try asking one of the following:
                             </p>
                             <div className="flex flex-wrap justify-center gap-3 w-full max-w-2xl">
                                 <button
                                     onClick={() => handleSuggestion("Check unread messages and draft a response for them")}
-                                    className="p-4 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:border-blue-300 hover:shadow-md hover:text-blue-600 transition-all text-left flex items-center gap-2 group"
+                                    className="p-4 bg-white border border-gray-200 rounded-xl text-gray-800 text-sm font-medium hover:border-blue-300 hover:shadow-md hover:text-blue-700 transition-all text-left flex items-center gap-2 group"
                                 >
                                     <span className="group-hover:scale-110 transition-transform">📧</span> Check unread emails
                                 </button>
@@ -163,7 +163,7 @@ export default function Chat() {
                                     <div
                                         className={`px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[75%] shadow-sm leading-relaxed text-[15px] ${isUser
                                             ? 'bg-blue-600 text-white rounded-br-none'
-                                            : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                                            : 'bg-white text-gray-900 border border-gray-300 rounded-bl-none'
                                             }`}
                                     >
                                         {isUser ? (
@@ -209,7 +209,7 @@ export default function Chat() {
                             onKeyDown={handleKeyPress}
                             placeholder="Type your message..."
                             disabled={loading}
-                            className="flex-1 bg-transparent border-none text-gray-900 placeholder-gray-400 focus:ring-0 px-3 py-2 text-base outline-none"
+                            className="flex-1 bg-transparent border-none text-gray-900 placeholder-gray-500 focus:ring-0 px-3 py-2 text-base outline-none"
                         />
                         <button
                             onClick={sendMessage}
@@ -226,7 +226,7 @@ export default function Chat() {
                         </button>
                     </div>
                     <div className="text-center">
-                        <p className="text-[11px] text-gray-400">
+                        <p className="text-[11px] text-gray-500">
                             Please verify important information.
                         </p>
                     </div>

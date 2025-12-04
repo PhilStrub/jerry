@@ -30,6 +30,11 @@ services:
       - NEXT_PUBLIC_AGENT_URL=http://localhost:8000
     depends_on:
       - agent
+    volumes:
+      # Bind mount source code for development
+      - ./frontend/app:/app/app
+      - ./frontend/components:/app/components
+      - ./frontend/public:/app/public
     networks:
       - jerry-network
     restart: unless-stopped
@@ -51,6 +56,8 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      # Bind mount source code for hot-reload (development)
+      - ./src:/app/src
       # Mount Gmail credentials
       - ./credentials.json:/app/credentials.json
       - ./token.json:/app/token.json
