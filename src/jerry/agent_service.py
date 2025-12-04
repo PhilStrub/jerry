@@ -401,8 +401,8 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
     # Initialize LLM (Qwen via OpenRouter)
     llm = ChatOpenAI(
         model=os.getenv("QWEN_MODEL", "qwen/qwen-2.5-72b-instruct"),
-        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-        openai_api_base="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
         temperature=0.7,
     )
     

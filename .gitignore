@@ -64,3 +64,7 @@ token.json
 # Node modules
 node_modules/
 .next/
+
+.env
+
+
