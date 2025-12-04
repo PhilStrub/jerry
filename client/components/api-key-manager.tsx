@@ -38,6 +38,13 @@ const API_KEYS_CONFIG: ApiKeyConfig[] = [
     placeholder: "gsk_..."
   },
   {
+    name: "OpenRouter",
+    key: "openrouter",
+    storageKey: "OPENROUTER_API_KEY",
+    label: "OpenRouter API Key",
+    placeholder: "sk-or-v1-..."
+  },
+  {
     name: "Google Generative AI",
     key: "google-genai",
     storageKey: "GOOGLE_GENERATIVE_AI_API_KEY",
@@ -45,6 +52,7 @@ const API_KEYS_CONFIG: ApiKeyConfig[] = [
     placeholder: "AIzaSy..."
   }
 ];
+
 
 interface ApiKeyManagerProps {
   open: boolean;
@@ -58,14 +66,14 @@ export function ApiKeyManager({ open, onOpenChange }: ApiKeyManagerProps) {
   // Load API keys from localStorage on initial mount
   useEffect(() => {
     const storedKeys: Record<string, string> = {};
-    
+
     API_KEYS_CONFIG.forEach(config => {
       const value = localStorage.getItem(config.storageKey);
       if (value) {
         storedKeys[config.key] = value;
       }
     });
-    
+
     setApiKeys(storedKeys);
   }, []);
 
@@ -82,14 +90,14 @@ export function ApiKeyManager({ open, onOpenChange }: ApiKeyManagerProps) {
     try {
       API_KEYS_CONFIG.forEach(config => {
         const value = apiKeys[config.key];
-        
+
         if (value && value.trim()) {
           localStorage.setItem(config.storageKey, value.trim());
         } else {
           localStorage.removeItem(config.storageKey);
         }
       });
-      
+
       toast.success("API keys saved successfully");
       onOpenChange(false);
     } catch (error) {
@@ -104,7 +112,7 @@ export function ApiKeyManager({ open, onOpenChange }: ApiKeyManagerProps) {
       API_KEYS_CONFIG.forEach(config => {
         localStorage.removeItem(config.storageKey);
       });
-      
+
       setApiKeys({});
       toast.success("All API keys cleared");
     } catch (error) {
@@ -122,7 +130,7 @@ export function ApiKeyManager({ open, onOpenChange }: ApiKeyManagerProps) {
             Enter your own API keys for different AI providers. Keys are stored securely in your browser&apos;s local storage.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           {API_KEYS_CONFIG.map(config => (
             <div key={config.key} className="grid gap-2">
@@ -137,7 +145,7 @@ export function ApiKeyManager({ open, onOpenChange }: ApiKeyManagerProps) {
             </div>
           ))}
         </div>
-        
+
         <DialogFooter className="flex justify-between sm:justify-between">
           <Button
             variant="destructive"

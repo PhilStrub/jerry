@@ -2,5 +2,7 @@
 OPENAI_API_KEY="your-openai-api-key"
 #Groq
 GROQ_API_KEY="your-groq-api-key"
+#OpenRouter
+OPENROUTER_API_KEY="your-openrouter-api-key"
 #Anthropic
 ANTHROPIC_API_KEY="your-anthropic-api-key"

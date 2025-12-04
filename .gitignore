@@ -56,3 +56,11 @@ build/
 *.tmp
 .cache/
 
+# Environment and credentials
+.env
+credentials.json
+token.json
+
+# Node modules
+node_modules/
+.next/
