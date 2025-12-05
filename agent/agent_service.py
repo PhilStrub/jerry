@@ -15,14 +15,60 @@ from email.message import EmailMessage
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import logging
 import torch
 import numpy as np
+from langchain.callbacks.base import BaseCallbackHandler
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# Tool Callback Handler for Capturing Tool Calls
+# ============================================================================
+
+class ToolCallbackHandler(BaseCallbackHandler):
+    """Captures tool invocations and their results."""
+
+    def __init__(self):
+        super().__init__()
+        self.tool_calls: List[Dict[str, Any]] = []
+        self.current_tool_start_time = None
+
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
+        """Capture when a tool starts executing."""
+        tool_name = serialized.get("name", "unknown_tool")
+        logger.info(f"🔧 Tool started: {tool_name} with input: {input_str[:100]}")
+
+        self.current_tool_start_time = datetime.now()
+
+        tool_call_data = {
+            "tool_name": tool_name,
+            "input": input_str,
+            "output": None,
+            "error": None,
+            "timestamp": self.current_tool_start_time.isoformat(),
+            "duration_ms": None,
+        }
+        self.tool_calls.append(tool_call_data)
+        logger.info(f"📝 Tool call appended. Total tool calls: {len(self.tool_calls)}")
+
+    def on_tool_end(self, output: str, **kwargs: Any) -> None:
+        """Capture when a tool finishes executing."""
+        if self.tool_calls and self.tool_calls[-1]["output"] is None:
+            duration = int((datetime.now() - self.current_tool_start_time).total_seconds() * 1000)
+            self.tool_calls[-1]["output"] = output
+            self.tool_calls[-1]["duration_ms"] = duration
+            logger.info(f"Tool ended: {self.tool_calls[-1]['tool_name']} (took {duration}ms)")
+
+    def on_tool_error(self, error: Exception, **kwargs: Any) -> None:
+        """Capture when a tool encounters an error."""
+        if self.tool_calls and self.tool_calls[-1]["output"] is None:
+            self.tool_calls[-1]["error"] = str(error)
+            logger.error(f"Tool error: {self.tool_calls[-1]['tool_name']} - {error}")
 
 app = FastAPI(title="AdventureWorks Agent Service")
 
@@ -284,35 +330,6 @@ def reply_to_email(message_id: str, body: str) -> str:
         logger.error(f"Error replying to email: {str(e)}")
         return f"Failed to reply to email: {str(e)}"
 
-# @tool
-# def send_email(to: str, subject: str, body: str) -> str:
-#     """Send a NEW email using Gmail (not a reply). Use reply_to_email for replying to existing emails.
-
-#     Args:
-#         to: The recipient's email address.
-#         subject: The subject of the email.
-#         body: The body text of the email.
-
-#     Returns:
-#         Success message with message ID or error message.
-#     """
-#     try:
-#         service = get_gmail_service()
-
-#         message = EmailMessage()
-#         message.set_content(body)
-#         message['To'] = to
-#         message['Subject'] = subject
-
-#         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-#         create_message = {'raw': encoded_message}
-
-#         send_message = service.users().messages().send(userId="me", body=create_message).execute()
-#         return f"Email sent successfully to {to}! Message ID: {send_message['id']}"
-#     except Exception as e:
-#         logger.error(f"Error sending email: {str(e)}")
-#         return f"Failed to send email: {str(e)}"
-
 # ============================================================================
 # Email Classification Tool
 # ============================================================================
@@ -338,10 +355,17 @@ def get_email_classifier():
 def classify_email_type(email_text: str) -> str:
     """Classify an email into one of three categories using ML model.
 
-    This tool uses a fine-tuned BERT model to categorize emails as:
+    This tool uses a fine-tuned BERT model to categorize emails by type and criticality:
+
+    type:
     - inquiry: General questions or information requests
     - issue: Problems, bugs, or complaints
     - suggestion: Feedback, recommendations, or improvement ideas
+
+    criticality:
+    - low: Low priority, can be answered by a junior employee
+    - medium: Medium priority, can be answered by a senior employee
+    - high: High priority, can be answered by a manager
 
     Args:
         email_text: The complete email text (can include subject and body,
@@ -349,7 +373,7 @@ def classify_email_type(email_text: str) -> str:
 
     Returns:
         JSON string containing:
-        - label: The predicted category (inquiry/issue/suggestion)
+        - label: The predicted category (inquiry/issue/suggestion) and criticality (low/medium/high)
         - confidence: Prediction confidence score (0-1)
         - all_scores: Probabilities for all three categories
 
@@ -527,16 +551,22 @@ Use these table definitions if the specific "recipes" above don't cover the user
 Always be helpful, concise, and accurate. If you're unsure, ask for clarification."""
 
 
-def execute_agent(user_message: str, conversation_history: List[Dict] = None) -> str:
+def execute_agent(user_message: str, conversation_history: List[Dict] = None) -> tuple[str, List[Dict]]:
     """Execute agent logic with LangChain's create_tool_calling_agent and conversation memory.
-    
+
     Args:
         user_message: The current user message
         conversation_history: List of previous messages [{'role': 'user'/'assistant', 'content': '...'}]
+
+    Returns:
+        tuple: (response_text, tool_calls_list)
     """
     if conversation_history is None:
         conversation_history = []
-    
+
+    # Create callback handler to capture tool calls
+    tool_callback = ToolCallbackHandler()
+
     # Initialize LLM (Qwen via OpenRouter)
     llm = ChatOpenAI(
         model=os.getenv("QWEN_MODEL", "qwen/qwen-2.5-72b-instruct"),
@@ -566,13 +596,14 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
     # Create the agent
     agent = create_tool_calling_agent(llm, tools, prompt)
     
-    # Create agent executor
+    # Create agent executor with callback handler
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
         verbose=True,
         handle_parsing_errors=True,
         max_iterations=10,
+        callbacks=[tool_callback],
     )
     
     # Create chat history
@@ -592,14 +623,23 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
         # Execute the agent with chat history
         inputs = {"input": user_message, "chat_history": chat_history.messages}
         logger.info(f"Invoking agent with inputs keys: {inputs.keys()}")
-        
-        result = agent_executor.invoke(inputs)
-        
-        return result.get("output", "I apologize, but I couldn't generate a response.")
-        
+
+        # Pass callbacks in config as well to ensure they're triggered
+        result = agent_executor.invoke(
+            inputs,
+            config={"callbacks": [tool_callback]}
+        )
+
+        response_text = result.get("output", "I apologize, but I couldn't generate a response.")
+
+        logger.info(f"📊 After execution, tool_callback.tool_calls length: {len(tool_callback.tool_calls)}")
+
+        # Return both response and captured tool calls
+        return response_text, tool_callback.tool_calls
+
     except Exception as e:
         logger.error(f"Error executing agent: {str(e)}")
-        return f"I encountered an error: {str(e)}"
+        return f"I encountered an error: {str(e)}", []
 
 # ============================================================================
 # API Endpoints
@@ -614,25 +654,32 @@ async def root():
 async def chat(request: ChatRequest):
     """
     Chat endpoint - processes user messages with LangChain agent.
-    
+
     Supports conversation history for context-aware responses.
+    Returns tool calls for frontend display.
     """
     try:
         logger.info(f"Received chat request: {request.message}")
         logger.info(f"Conversation history length: {len(request.history)}")
-        
+
         # Convert Pydantic models to dicts for execute_agent
         history_dicts = [msg.dict() for msg in request.history] if request.history else []
-        
-        # Execute agent with conversation history
-        response_text = execute_agent(request.message, history_dicts)
-        
-        logger.info(f"Agent response: {response_text}")
-        
-        return ChatResponse(
+
+        # Execute agent with conversation history - now returns tuple
+        response_text, tool_calls = execute_agent(request.message, history_dicts)
+
+        logger.info(f"Agent response: {response_text[:100]}...")
+        logger.info(f"🎯 Tool calls captured: {len(tool_calls)}")
+        if tool_calls:
+            logger.info(f"🎯 Tool calls data: {tool_calls}")
+
+        response = ChatResponse(
             response=response_text,
-            tool_calls=None
+            tool_calls=tool_calls
         )
+        logger.info(f"📤 Returning response with {len(response.tool_calls or [])} tool calls")
+
+        return response
         
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}")

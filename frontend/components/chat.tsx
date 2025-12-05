@@ -6,6 +6,16 @@ import ReactMarkdown from 'react-markdown'
 interface Message {
     role: 'user' | 'assistant'
     content: string
+    tool_calls?: ToolCall[]
+}
+
+interface ToolCall {
+    tool_name: string
+    input: string
+    output: string | null
+    error: string | null
+    timestamp: string
+    duration_ms: number | null
 }
 
 // Custom components to style the Markdown elements nicely
@@ -35,6 +45,135 @@ const MarkdownComponents = {
     th: ({ node, ...props }: any) => <th className="bg-gray-100 px-3 py-2 text-left text-sm font-semibold text-gray-900" {...props} />,
     td: ({ node, ...props }: any) => <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900 border-t border-gray-200" {...props} />,
 };
+
+// Component for displaying individual tool calls in expandable boxes
+interface ToolCallBoxProps {
+    toolCall: ToolCall
+    index: number
+    isAnimating: boolean
+}
+
+function ToolCallBox({ toolCall, index, isAnimating }: ToolCallBoxProps) {
+    const [isExpanded, setIsExpanded] = useState(false)
+
+    const formatToolName = (name: string) => {
+        return name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    }
+
+    const handleToggle = () => {
+        console.log('Toggle clicked, current state:', isExpanded)
+        console.log('Tool call data:', toolCall)
+        setIsExpanded(!isExpanded)
+    }
+
+    const formatDuration = (ms: number | null) => {
+        if (!ms) return ''
+        return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`
+    }
+
+    return (
+        <div
+            className={`mb-2 border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm ${
+                isAnimating ? 'animate-slideIn' : ''
+            }`}
+            style={{ animationDelay: `${index * 200}ms`, animationFillMode: 'backwards' }}
+        >
+            <button
+                type="button"
+                onClick={handleToggle}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                        {formatToolName(toolCall.tool_name)}
+                    </span>
+                    {toolCall.duration_ms && (
+                        <span className="text-xs text-gray-500">({formatDuration(toolCall.duration_ms)})</span>
+                    )}
+                    {toolCall.error && <span className="text-xs text-red-600 font-medium">Error</span>}
+                </div>
+                <svg
+                    className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {isExpanded && (
+                <div className="px-4 pb-3 pt-1 border-t border-gray-200 bg-gray-50">
+                    {toolCall.input && toolCall.input.trim() !== '' && (
+                        <div className="mb-3">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Input:</div>
+                            <div className="text-sm text-gray-800 bg-white p-2 rounded border border-gray-200 font-mono text-xs overflow-x-auto">
+                                {toolCall.input}
+                            </div>
+                        </div>
+                    )}
+
+                    {toolCall.output && (
+                        <div className="mb-3">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Output:</div>
+                            <div className="text-sm text-gray-800 bg-white p-2 rounded border border-gray-200 font-mono text-xs overflow-x-auto max-h-48 overflow-y-auto">
+                                {toolCall.output}
+                            </div>
+                        </div>
+                    )}
+
+                    {toolCall.error && (
+                        <div className="mb-3">
+                            <div className="text-xs font-semibold text-red-600 mb-1">Error:</div>
+                            <div className="text-sm text-red-700 bg-red-50 p-2 rounded border border-red-200 font-mono text-xs">
+                                {toolCall.error}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="text-xs text-gray-500">
+                        {new Date(toolCall.timestamp).toLocaleTimeString()}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// Container component that handles sequential animation of tool calls
+interface AnimatedToolCallsContainerProps {
+    toolCalls: ToolCall[]
+}
+
+function AnimatedToolCallsContainer({ toolCalls }: AnimatedToolCallsContainerProps) {
+    const [visibleCount, setVisibleCount] = useState(0)
+
+    useEffect(() => {
+        console.log('🎬 AnimatedToolCallsContainer received tool calls:', toolCalls)
+        if (toolCalls.length === 0) {
+            console.log('⚠️ No tool calls to animate')
+            return
+        }
+
+        console.log(`🎬 Animating ${toolCalls.length} tool calls`)
+        const timers: NodeJS.Timeout[] = []
+        toolCalls.forEach((_, index) => {
+            const timer = setTimeout(() => {
+                console.log(`🎬 Making tool call ${index + 1} visible`)
+                setVisibleCount(index + 1)
+            }, index * 200)
+            timers.push(timer)
+        })
+
+        return () => timers.forEach(timer => clearTimeout(timer))
+    }, [toolCalls])
+
+    return (
+        <div className="space-y-2 mb-3">
+            {toolCalls.slice(0, visibleCount).map((toolCall, index) => (
+                <ToolCallBox key={index} toolCall={toolCall} index={index} isAnimating={true} />
+            ))}
+        </div>
+    )
+}
 
 export default function Chat() {
     const [messages, setMessages] = useState<Message[]>([])
@@ -77,10 +216,15 @@ export default function Chat() {
             }
 
             const data = await response.json()
+            console.log('📥 Received data from backend:', data)
+            console.log('📥 Tool calls in response:', data.tool_calls)
+
             const assistantMessage: Message = {
                 role: 'assistant',
                 content: data.response || 'No response received',
+                tool_calls: data.tool_calls || [],
             }
+            console.log('📥 Assistant message created:', assistantMessage)
             setMessages(prev => [...prev, assistantMessage])
         } catch (error) {
             console.error('Error sending message:', error)
@@ -127,10 +271,15 @@ export default function Chat() {
             }
 
             const data = await response.json();
+            console.log('📥 (Suggestion) Received data from backend:', data)
+            console.log('📥 (Suggestion) Tool calls in response:', data.tool_calls)
+
             const assistantMessage: Message = {
                 role: 'assistant',
                 content: data.response || 'No response received',
+                tool_calls: data.tool_calls || [],
             };
+            console.log('📥 (Suggestion) Assistant message created:', assistantMessage)
             setMessages(prev => [...prev, assistantMessage]);
         } catch (error) {
             console.error('Error sending message:', error);
@@ -196,22 +345,31 @@ export default function Chat() {
                                         </div>
                                     )}
 
-                                    <div
-                                        className={`px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[75%] shadow-sm leading-relaxed text-[15px] ${isUser
-                                            ? 'bg-blue-600 text-white rounded-br-none'
-                                            : 'bg-white text-gray-900 border border-gray-300 rounded-bl-none'
-                                            }`}
-                                    >
-                                        {isUser ? (
-                                            <div className="whitespace-pre-wrap word-break-break-word">{msg.content}</div>
-                                        ) : (
-                                            // THIS IS WHERE THE MAGIC HAPPENS
-                                            <ReactMarkdown
-                                                components={MarkdownComponents}
-                                            >
-                                                {msg.content}
-                                            </ReactMarkdown>
+                                    <div className="flex flex-col max-w-[85%] sm:max-w-[75%]">
+                                        {/* Tool Calls Section - BEFORE message bubble */}
+                                        {!isUser && msg.tool_calls && msg.tool_calls.length > 0 && (
+                                            <div className="mb-2">
+                                                <AnimatedToolCallsContainer toolCalls={msg.tool_calls} />
+                                            </div>
                                         )}
+
+                                        {/* Message Bubble */}
+                                        <div
+                                            className={`px-4 py-3 rounded-2xl shadow-sm leading-relaxed text-[15px] ${isUser
+                                                ? 'bg-blue-600 text-white rounded-br-none'
+                                                : 'bg-white text-gray-900 border border-gray-300 rounded-bl-none'
+                                            }`}
+                                        >
+                                            {isUser ? (
+                                                <div className="whitespace-pre-wrap word-break-break-word">{msg.content}</div>
+                                            ) : (
+                                                <ReactMarkdown
+                                                    components={MarkdownComponents}
+                                                >
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )
