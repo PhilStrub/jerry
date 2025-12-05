@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="python3_command" type="xstring" value=""/>
+        <entry key="script" type="xstring" value="import knime.scripting.io as knio%%00010import pandas as pd%%00010import numpy as np%%00010import ast%%00010from sklearn.model_selection import train_test_split%%00010%%00010&quot;&quot;&quot;%%00010    Script to put inside a KNIME Python Script node to preprocess email data.%%00010    Assumes the input data table has columns: subject, message_body, email_types.%%00010    Outputs two KNIME tables: training and validation splits.%%00010&quot;&quot;&quot;%%00010%%00010# ========= CONFIG =========%%00010VAL_SIZE = 0.2       # 20% validation%%00010RANDOM_SEED = 42%%00010# ==========================%%00010%%00010# ----- 1. Read KNIME input (Arrow → pandas) -----%%00010# input_tables[0] is an ArrowSourceTable, so convert it:%%00010input_table = knio.input_tables[0]%%00010df = input_table.to_pandas()%%00010%%00010# Expect columns: subject, message_body, email_types%%00010required_cols = [&quot;subject&quot;, &quot;message_body&quot;, &quot;email_types&quot;]%%00010missing = [c for c in required_cols if c not in df.columns]%%00010if missing:%%00010    raise ValueError(f&quot;Missing required columns in input table: {missing}&quot;)%%00010%%00010%%00010# ----- 2. Helper functions -----%%00010%%00010def clean_label(raw_label):%%00010    &quot;&quot;&quot;Normalize email_types into a simple lowercase string.&quot;&quot;&quot;%%00010    if pd.isna(raw_label):%%00010        return np.nan%%00010%%00010    s = str(raw_label).strip()%%00010%%00010    # Handle list-like strings such as &quot;['issue']&quot;%%00010    try:%%00010        parsed = ast.literal_eval(s)%%00010        if isinstance(parsed, list) and len(parsed) &gt; 0:%%00010            s = parsed[0]%%00010    except Exception:%%00010        pass%%00010%%00010    s = str(s).strip().lower()%%00010    return s if s else np.nan%%00010%%00010%%00010def combine_subject_and_body(subject, body):%%00010    subject = &quot;&quot; if pd.isna(subject) else str(subject).strip()%%00010    body = &quot;&quot; if pd.isna(body) else str(body).strip()%%00010%%00010    if subject and body:%%00010        return f&quot;Subject: {subject}\n\n{body}&quot;%%00010    elif subject:%%00010        return f&quot;Subject: {subject}&quot;%%00010    else:%%00010        return body%%00010%%00010%%00010# ----- 3. Preprocessing -----%%00010%%00010# Clean label%%00010df[&quot;email_type&quot;] = df[&quot;email_types&quot;].apply(clean_label)%%00010df = df.dropna(subset=[&quot;email_type&quot;])%%00010%%00010# Build text column%%00010df[&quot;text&quot;] = df.apply(%%00010    lambda row: combine_subject_and_body(row[&quot;subject&quot;], row[&quot;message_body&quot;]),%%00010    axis=1,%%00010)%%00010%%00010# Drop empty texts%%00010df[&quot;text&quot;] = df[&quot;text&quot;].str.strip()%%00010df = df[df[&quot;text&quot;] != &quot;&quot;].reset_index(drop=True)%%00010%%00010# ----- 4. Stratified train/validation split -----%%00010%%00010train_df, val_df = train_test_split(%%00010    df,%%00010    test_size=VAL_SIZE,%%00010    random_state=RANDOM_SEED,%%00010    stratify=df[&quot;email_type&quot;],%%00010)%%00010%%00010train_df = train_df.reset_index(drop=True)%%00010val_df   = val_df.reset_index(drop=True)%%00010%%00010# ----- 5. Output to KNIME (pandas → KNIME Table) -----%%00010%%00010train_table = knio.Table.from_pandas(train_df)%%00010val_table   = knio.Table.from_pandas(val_df)%%00010%%00010knio.output_tables[0] = train_table   # first output port%%00010knio.output_tables[1] = val_table     # second output port%%00010"/>
+    </config>
+    <config key="variables">
+        <entry key="version" type="xstring" value="V_2019_09_13"/>
+        <config key="tree">
+            <config key="python3_command">
+                <entry key="used_variable" type="xstring" value=""/>
+                <entry key="used_variable_flawed" type="xboolean" value="false"/>
+                <entry key="exposed_variable" type="xstring" isnull="true" value=""/>
+            </config>
+        </config>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.python3.scripting.nodes2.script.PythonScriptNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Python Script"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Python 3 - Scripting Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.python3.scripting.nodes"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.0.v202510031553"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Python Integration"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.python3.scripting.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.0.v202510031553"/>
+    <config key="factory_settings"/>
+    <config key="node_creation_config">
+        <config key="Input object (pickled)"/>
+        <config key="Input table">
+            <config key="port_0">
+                <entry key="object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            </config>
+        </config>
+        <config key="Output table">
+            <config key="port_0">
+                <entry key="object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            </config>
+            <config key="port_1">
+                <entry key="object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            </config>
+        </config>
+        <config key="Output image"/>
+        <config key="Output object (pickled)"/>
+    </config>
+    <entry key="name" type="xstring" value="Python Script"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 554, Cols: 10"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+        <config key="port_2">
+            <entry key="index" type="xint" value="2"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 139, Cols: 10"/>
+            <entry key="port_dir_location" type="xstring" value="port_2"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="ad3d5c0b-ad1b-46d4-bde6-0f23e121ed0c"/>
+    </config>
+</config>

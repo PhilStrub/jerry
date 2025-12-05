@@ -334,8 +334,8 @@ def reply_to_email(message_id: str, body: str) -> str:
 # Email Classification Tool
 # ============================================================================
 
-_email_classifier_tokenizer = None
-_email_classifier_model = None
+_type_classifier_tokenizer = None
+_type_classifier_model = None
 
 def get_type_classifier():
     """Load email classifier model and tokenizer (singleton pattern)."""
@@ -398,7 +398,7 @@ def classify_email(email_text: str) -> str:
         - criticality_scores: Probabilities for all criticality levels
 
     Example:
-        classify_email_type("Subject: Bug Report\\n\\nThe app crashes when I click submit")
+        classify_email("Subject: Bug Report\\n\\nThe app crashes when I click submit")
         # Returns: {
         #   "type_label": "issue",
         #   "type_confidence": 0.94,
@@ -580,7 +580,7 @@ Criticality Levels:
 - **high**: High priority, urgent issues, requires manager attention, significant business impact
 
 To classify an email:
-1. Use classify_email_type with the full email text (preferably formatted as "Subject: <subject>\\n\\n<body>")
+1. Use classify_email with the full email text (preferably formatted as "Subject: <subject>\\n\\n<body>")
 2. The tool returns both type and criticality predictions with confidence scores
 3. Use these classifications to:
    - Route emails to appropriate departments based on type
@@ -663,7 +663,7 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
         fetch_emails,
         reply_to_email,  # For replying to existing emails
         # send_email,    # Commented out - function is disabled at line 305
-        classify_email_type,  # Email classification tool
+        classify_email,  # Correct email classification tool
     ]
     
     # Create prompt template

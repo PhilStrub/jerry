@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="column-filter">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="159"/>
+                <entry key="0" type="xstring" value="subject"/>
+                <entry key="1" type="xstring" value="sender"/>
+                <entry key="2" type="xstring" value="receiver"/>
+                <entry key="3" type="xstring" value="timestamp"/>
+                <entry key="4" type="xstring" value="email_types"/>
+                <entry key="5" type="xstring" value="support"/>
+                <entry key="6" type="xstring" value="api"/>
+                <entry key="7" type="xstring" value="develop"/>
+                <entry key="8" type="xstring" value="iam"/>
+                <entry key="9" type="xstring" value="servic"/>
+                <entry key="10" type="xstring" value="try"/>
+                <entry key="11" type="xstring" value="access"/>
+                <entry key="12" type="xstring" value="user"/>
+                <entry key="13" type="xstring" value="role"/>
+                <entry key="14" type="xstring" value="specif"/>
+                <entry key="15" type="xstring" value="limit"/>
+                <entry key="16" type="xstring" value="endpoint"/>
+                <entry key="17" type="xstring" value="pleas"/>
+                <entry key="18" type="xstring" value="provid"/>
+                <entry key="19" type="xstring" value="guidanc"/>
+                <entry key="20" type="xstring" value="document"/>
+                <entry key="21" type="xstring" value="monitor"/>
+                <entry key="22" type="xstring" value="dashboard"/>
+                <entry key="23" type="xstring" value="past"/>
+                <entry key="24" type="xstring" value="hour"/>
+                <entry key="25" type="xstring" value="unabl"/>
+                <entry key="26" type="xstring" value="data"/>
+                <entry key="27" type="xstring" value="perform"/>
+                <entry key="28" type="xstring" value="critic"/>
+                <entry key="29" type="xstring" value="issu"/>
+                <entry key="30" type="xstring" value="system"/>
+                <entry key="31" type="xstring" value="advis"/>
+                <entry key="32" type="xstring" value="resolut"/>
+                <entry key="33" type="xstring" value="time"/>
+                <entry key="34" type="xstring" value="updat"/>
+                <entry key="35" type="xstring" value="see"/>
+                <entry key="36" type="xstring" value="impact"/>
+                <entry key="37" type="xstring" value="tri"/>
+                <entry key="38" type="xstring" value="log"/>
+                <entry key="39" type="xstring" value="persist"/>
+                <entry key="40" type="xstring" value="look"/>
+                <entry key="41" type="xstring" value="urgent"/>
+                <entry key="42" type="xstring" value="applic"/>
+                <entry key="43" type="xstring" value="bit"/>
+                <entry key="44" type="xstring" value="call"/>
+                <entry key="45" type="xstring" value="deploi"/>
+                <entry key="46" type="xstring" value="cloud"/>
+                <entry key="47" type="xstring" value="platform"/>
+                <entry key="48" type="xstring" value="experienc"/>
+                <entry key="49" type="xstring" value="intermitt"/>
+                <entry key="50" type="xstring" value="outag"/>
+                <entry key="51" type="xstring" value="spike"/>
+                <entry key="52" type="xstring" value="handl"/>
+                <entry key="53" type="xstring" value="immedi"/>
+                <entry key="54" type="xstring" value="asap"/>
+                <entry key="55" type="xstring" value="integr"/>
+                <entry key="56" type="xstring" value="troubl"/>
+                <entry key="57" type="xstring" value="understand"/>
+                <entry key="58" type="xstring" value="assign"/>
+                <entry key="59" type="xstring" value="permiss"/>
+                <entry key="60" type="xstring" value="custom"/>
+                <entry key="61" type="xstring" value="creat"/>
+                <entry key="62" type="xstring" value="team"/>
+                <entry key="63" type="xstring" value="resourc"/>
+                <entry key="64" type="xstring" value="scale"/>
+                <entry key="65" type="xstring" value="manag"/>
+                <entry key="66" type="xstring" value="set"/>
+                <entry key="67" type="xstring" value="environ"/>
+                <entry key="68" type="xstring" value="allow"/>
+                <entry key="69" type="xstring" value="configur"/>
+                <entry key="70" type="xstring" value="current"/>
+                <entry key="71" type="xstring" value="control"/>
+                <entry key="72" type="xstring" value="us"/>
+                <entry key="73" type="xstring" value="instanc"/>
+                <entry key="74" type="xstring" value="alert"/>
+                <entry key="75" type="xstring" value="chang"/>
+                <entry key="76" type="xstring" value="defin"/>
+                <entry key="77" type="xstring" value="mercuri"/>
+                <entry key="78" type="xstring" value="project"/>
+                <entry key="79" type="xstring" value="error"/>
+                <entry key="80" type="xstring" value="languag"/>
+                <entry key="81" type="xstring" value="implement"/>
+                <entry key="82" type="xstring" value="messag"/>
+                <entry key="83" type="xstring" value="function"/>
+                <entry key="84" type="xstring" value="relat"/>
+                <entry key="85" type="xstring" value="isiah"/>
+                <entry key="86" type="xstring" value="featur"/>
+                <entry key="87" type="xstring" value="inform"/>
+                <entry key="88" type="xstring" value="assist"/>
+                <entry key="89" type="xstring" value="sincer"/>
+                <entry key="90" type="xstring" value="encount"/>
+                <entry key="91" type="xstring" value="name"/>
+                <entry key="92" type="xstring" value="incredibli"/>
+                <entry key="93" type="xstring" value="consid"/>
+                <entry key="94" type="xstring" value="get"/>
+                <entry key="95" type="xstring" value="verifi"/>
+                <entry key="96" type="xstring" value="correct"/>
+                <entry key="97" type="xstring" value="recent"/>
+                <entry key="98" type="xstring" value="caus"/>
+                <entry key="99" type="xstring" value="major"/>
+                <entry key="100" type="xstring" value="disrupt"/>
+                <entry key="101" type="xstring" value="investig"/>
+                <entry key="102" type="xstring" value="soon"/>
+                <entry key="103" type="xstring" value="deploy"/>
+                <entry key="104" type="xstring" value="process"/>
+                <entry key="105" type="xstring" value="troubleshoot"/>
+                <entry key="106" type="xstring" value="exampl"/>
+                <entry key="107" type="xstring" value="help"/>
+                <entry key="108" type="xstring" value="code"/>
+                <entry key="109" type="xstring" value="experi"/>
+                <entry key="110" type="xstring" value="signific"/>
+                <entry key="111" type="xstring" value="peak"/>
+                <entry key="112" type="xstring" value="face"/>
+                <entry key="113" type="xstring" value="correctli"/>
+                <entry key="114" type="xstring" value="resolv"/>
+                <entry key="115" type="xstring" value="compil"/>
+                <entry key="116" type="xstring" value="significantli"/>
+                <entry key="117" type="xstring" value="root"/>
+                <entry key="118" type="xstring" value="suggest"/>
+                <entry key="119" type="xstring" value="greatli"/>
+                <entry key="120" type="xstring" value="receiv"/>
+                <entry key="121" type="xstring" value="fail"/>
+                <entry key="122" type="xstring" value="multipl"/>
+                <entry key="123" type="xstring" value="request"/>
+                <entry key="124" type="xstring" value="respons"/>
+                <entry key="125" type="xstring" value="version"/>
+                <entry key="126" type="xstring" value="check"/>
+                <entry key="127" type="xstring" value="abl"/>
+                <entry key="128" type="xstring" value="pinpoint"/>
+                <entry key="129" type="xstring" value="follow"/>
+                <entry key="130" type="xstring" value="isabella"/>
+                <entry key="131" type="xstring" value="requir"/>
+                <entry key="132" type="xstring" value="solut"/>
+                <entry key="133" type="xstring" value="secur"/>
+                <entry key="134" type="xstring" value="prevent"/>
+                <entry key="135" type="xstring" value="product"/>
+                <entry key="136" type="xstring" value="identifi"/>
+                <entry key="137" type="xstring" value="start"/>
+                <entry key="138" type="xstring" value="lead"/>
+                <entry key="139" type="xstring" value="oper"/>
+                <entry key="140" type="xstring" value="step"/>
+                <entry key="141" type="xstring" value="increas"/>
+                <entry key="142" type="xstring" value="complet"/>
+                <entry key="143" type="xstring" value="sever"/>
+                <entry key="144" type="xstring" value="authent"/>
+                <entry key="145" type="xstring" value="live"/>
+                <entry key="146" type="xstring" value="regard"/>
+                <entry key="147" type="xstring" value="latenc"/>
+                <entry key="148" type="xstring" value="estim"/>
+                <entry key="149" type="xstring" value="potenti"/>
+                <entry key="150" type="xstring" value="busi"/>
+                <entry key="151" type="xstring" value="consist"/>
+                <entry key="152" type="xstring" value="detail"/>
+                <entry key="153" type="xstring" value="believ"/>
+                <entry key="154" type="xstring" value="notic"/>
+                <entry key="155" type="xstring" value="improv"/>
+                <entry key="156" type="xstring" value="enhanc"/>
+                <entry key="157" type="xstring" value="write"/>
+                <entry key="158" type="xstring" value="hello"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="5"/>
+                <entry key="0" type="xstring" value="message_body"/>
+                <entry key="1" type="xstring" value="thread_id"/>
+                <entry key="2" type="xstring" value="email_criticality"/>
+                <entry key="3" type="xstring" value="message_document"/>
+                <entry key="4" type="xstring" value="Document"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceExclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Column Filter"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.0.v202510020824"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.0.v202510021208"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Column Filter"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 693, Cols: 159"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="9a839eb0-770d-4bf7-b4d3-5daafbe810d1"/>
+    </config>
+</config>
