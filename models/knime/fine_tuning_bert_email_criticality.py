@@ -12,17 +12,17 @@ from transformers import (
 )
 
 """
-Train a lightweight BERT model to predict email_type from text,
+Train a lightweight BERT model to predict email_criticality from text,
 and return the validation DataFrame with a Prediction() column.
 
-Expects train_df and val_df with at least: ["text", "email_type"]
+Expects train_df and val_df with at least: ["text", "email_criticality"]
 """
 
 # ============================================================
 # ---------------------- CONFIG ------------------------------
 # ============================================================
 
-LABEL_COL = "email_type"              # target: issue / inquiry / suggestion
+LABEL_COL = "email_criticality"       # target: low / medium / high
 
 MODEL_NAME = "prajjwal1/bert-tiny"
 
@@ -94,7 +94,7 @@ def compute_accuracy(eval_pred):
     return {"accuracy": (preds == labels).mean().item()}
 
 
-def train_and_predict_type(
+def train_and_predict_criticality(
     train_df: pd.DataFrame,
     val_df: pd.DataFrame,
     label_col: str = LABEL_COL,
@@ -137,7 +137,7 @@ def train_and_predict_type(
 
     # ----- Trainer -----
     training_args = TrainingArguments(
-        output_dir="./knime_temp_email_type",  # minimal temp dir
+        output_dir="./knime_temp_email_criticality",  # minimal temp dir
         learning_rate=LEARNING_RATE,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
@@ -158,7 +158,7 @@ def train_and_predict_type(
     )
 
     # ----- Train model -----
-    print("Training email_type model...")
+    print("Training email_criticality model...")
     trainer.train()
 
     # ----- Predict on validation -----
@@ -171,7 +171,7 @@ def train_and_predict_type(
         raise RuntimeError("Number of predictions does not match number of validation rows")
 
     val_with_pred = val_df.copy()
-    val_with_pred["Prediction()"] = pred_labels  # issue / inquiry / suggestion
+    val_with_pred["Prediction()"] = pred_labels  # low / medium / high
 
     return val_with_pred
 
@@ -185,7 +185,7 @@ def train_and_predict_type(
 train_df = knio.input_tables[0].to_pandas()
 val_df = knio.input_tables[1].to_pandas()
 
-val_with_preds = train_and_predict_type(train_df, val_df)
+val_with_preds = train_and_predict_criticality(train_df, val_df)
 
 # Output table → validation + Prediction()
 knio.output_tables[0] = knio.Table.from_pandas(val_with_preds)
