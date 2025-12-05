@@ -17,6 +17,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from typing import List, Dict, Optional
 import logging
+import torch
+import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -285,31 +287,148 @@ def reply_to_email(message_id: str, body: str) -> str:
 # @tool
 # def send_email(to: str, subject: str, body: str) -> str:
 #     """Send a NEW email using Gmail (not a reply). Use reply_to_email for replying to existing emails.
-    
+
 #     Args:
 #         to: The recipient's email address.
 #         subject: The subject of the email.
 #         body: The body text of the email.
-        
+
 #     Returns:
 #         Success message with message ID or error message.
 #     """
 #     try:
 #         service = get_gmail_service()
-        
+
 #         message = EmailMessage()
 #         message.set_content(body)
 #         message['To'] = to
 #         message['Subject'] = subject
-        
+
 #         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 #         create_message = {'raw': encoded_message}
-        
+
 #         send_message = service.users().messages().send(userId="me", body=create_message).execute()
 #         return f"Email sent successfully to {to}! Message ID: {send_message['id']}"
 #     except Exception as e:
 #         logger.error(f"Error sending email: {str(e)}")
 #         return f"Failed to send email: {str(e)}"
+
+# ============================================================================
+# Email Classification Tool
+# ============================================================================
+
+_email_classifier_tokenizer = None
+_email_classifier_model = None
+
+def get_email_classifier():
+    """Load email classifier model and tokenizer (singleton pattern)."""
+    global _email_classifier_tokenizer, _email_classifier_model
+    if _email_classifier_tokenizer is None or _email_classifier_model is None:
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+        model_path = os.path.join(os.path.dirname(__file__), "..", "models", "email_classifier_bert_tiny")
+        logger.info(f"Loading email classifier from {model_path}")
+        _email_classifier_tokenizer = AutoTokenizer.from_pretrained(model_path)
+        _email_classifier_model = AutoModelForSequenceClassification.from_pretrained(model_path)
+        logger.info(f"Email classifier loaded successfully")
+        logger.info(f"Model config id2label: {_email_classifier_model.config.id2label}")
+        logger.info(f"Model config label2id: {_email_classifier_model.config.label2id}")
+    return _email_classifier_tokenizer, _email_classifier_model
+
+@tool
+def classify_email_type(email_text: str) -> str:
+    """Classify an email into one of three categories using ML model.
+
+    This tool uses a fine-tuned BERT model to categorize emails as:
+    - inquiry: General questions or information requests
+    - issue: Problems, bugs, or complaints
+    - suggestion: Feedback, recommendations, or improvement ideas
+
+    Args:
+        email_text: The complete email text (can include subject and body,
+                   ideally formatted as "Subject: <subject>\\n\\n<body>")
+
+    Returns:
+        JSON string containing:
+        - label: The predicted category (inquiry/issue/suggestion)
+        - confidence: Prediction confidence score (0-1)
+        - all_scores: Probabilities for all three categories
+
+    Example:
+        classify_email_type("Subject: Bug Report\\n\\nThe app crashes when I click submit")
+        # Returns: {"label": "issue", "confidence": 0.94, "all_scores": {...}}
+    """
+    import json
+
+    try:
+        tokenizer, model = get_email_classifier()
+
+        # Tokenize input
+        inputs = tokenizer(
+            email_text,
+            truncation=True,
+            padding="max_length",
+            max_length=256,
+            return_tensors="pt"
+        )
+
+        # Detect device (GPU/MPS/CPU)
+        device = torch.device(
+            "cuda" if torch.cuda.is_available() else
+            "mps" if torch.backends.mps.is_available() else
+            "cpu"
+        )
+        model.to(device)
+        model.eval()
+
+        # Run inference
+        with torch.no_grad():
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            outputs = model(**inputs)
+            logits = outputs.logits
+
+        # Extract predictions
+        probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
+        predicted_id = int(np.argmax(probs))
+
+        # Get label mappings from model config
+        id2label = model.config.id2label
+
+        # Handle both integer and string keys in id2label (transformers uses int keys)
+        if predicted_id in id2label:
+            predicted_label = id2label[predicted_id]
+        elif str(predicted_id) in id2label:
+            predicted_label = id2label[str(predicted_id)]
+        else:
+            logger.error(f"Predicted ID {predicted_id} not found in id2label: {id2label}")
+            raise KeyError(f"Label mapping not found for predicted ID: {predicted_id}")
+
+        # Build result - handle both integer and string keys
+        all_scores = {}
+        for i in range(len(probs)):
+            if i in id2label:
+                label = id2label[i]
+            elif str(i) in id2label:
+                label = id2label[str(i)]
+            else:
+                logger.warning(f"Label ID {i} not found in id2label, skipping")
+                continue
+            all_scores[label] = float(probs[i])
+
+        result = {
+            "label": predicted_label,
+            "confidence": float(probs[predicted_id]),
+            "all_scores": all_scores
+        }
+
+        return json.dumps(result, indent=2)
+
+    except Exception as e:
+        logger.error(f"Error classifying email: {str(e)}", exc_info=True)
+        return json.dumps({
+            "error": f"Classification failed: {str(e)}",
+            "label": "unknown",
+            "confidence": 0.0
+        })
 
 # ============================================================================
 # Simple Agent Implementation
@@ -322,6 +441,7 @@ You can help users with:
 - Listing and describing database tables
 - Fetching UNREAD emails from Gmail
 - Drafting and sending email responses
+- Classifying emails by type (inquiry, issue, or suggestion)
 
 **DATABASE KNOWLEDGE - USE THIS FOR QUERIES:**
 
@@ -351,6 +471,17 @@ You can help users with:
    - **Tables**: `sales.salesorderheader` (soh), `sales.salesorderdetail` (sod), `sales.customer` (c), `person.person` (p)
    - **Join**: `soh.salesorderid = sod.salesorderid` AND `soh.customerid = c.customerid` AND `c.personid = p.businessentityid`
    - **Columns**: `soh.salesordernumber`, `soh.orderdate`, `soh.status`, `soh.totaldue`
+
+**EMAIL CLASSIFICATION:**
+You have access to an ML-powered email classifier that categorizes emails into:
+- **inquiry**: General questions, information requests, "how do I..." questions
+- **issue**: Problems, bugs, complaints, error reports, "something is broken"
+- **suggestion**: Feedback, feature requests, recommendations, "you should..."
+
+To classify an email:
+1. Use classify_email_type with the full email text (preferably formatted as "Subject: <subject>\\n\\n<body>")
+2. The tool returns the predicted category, confidence score, and probabilities for all categories
+3. Use this classification to route emails to appropriate departments or prioritize responses
 
 **RULES OF ENGAGEMENT - FOLLOW STRICTLY:**
 
@@ -420,7 +551,8 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
         list_tables_with_schemas,
         fetch_emails,
         reply_to_email,  # For replying to existing emails
-        send_email,      # For sending new emails
+        # send_email,    # Commented out - function is disabled at line 305
+        classify_email_type,  # Email classification tool
     ]
     
     # Create prompt template

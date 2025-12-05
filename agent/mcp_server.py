@@ -194,41 +194,6 @@ def list_tables() -> List[str]:
     except Exception as e:
         return [f"Error listing tables: {str(e)}"]
 
-# @mcp.tool()
-# def describe_table(table_name: str) -> List[Dict[str, str]]:
-#     """
-#     Get the schema definition for a specific table.
-    
-#     Args:
-#         table_name: The name of the table (e.g., 'Person.Person').
-#     """
-#     try:
-#         schema, table = table_name.split('.') if '.' in table_name else ('public', table_name)
-        
-#         with get_db_connection() as conn:
-#             with conn.cursor() as cur:
-#                 cur.execute("""
-#                     SELECT column_name, data_type, is_nullable
-#                     FROM information_schema.columns
-#                     WHERE table_schema = %s AND table_name = %s
-#                     ORDER BY ordinal_position;
-#                 """, (schema, table))
-                
-#                 columns = []
-#                 for row in cur.fetchall():
-#                     columns.append({
-#                         "column_name": row[0],
-#                         "data_type": row[1],
-#                         "nullable": row[2]
-#                     })
-                
-#                 if not columns:
-#                     return [{"error": f"Table '{table_name}' not found or empty."}]
-                
-#                 return columns
-#     except Exception as e:
-#         return [{"error": str(e)}]
-
 
 if __name__ == "__main__":
     import uvicorn

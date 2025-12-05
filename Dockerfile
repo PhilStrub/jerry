@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-COPY src/ ./src/
+COPY agent/ ./agent/
+COPY models/ ./models/
 
 RUN pip install --no-cache-dir .
 
-CMD ["uvicorn", "jerry.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "agent.agent_service:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -57,7 +57,8 @@ services:
         condition: service_healthy
     volumes:
       # Bind mount source code for hot-reload (development)
-      - ./src:/app/src
+      - ./agent:/app/agent
+      - ./models:/app/models
       # Mount Gmail credentials
       - ./credentials.json:/app/credentials.json
       - ./token.json:/app/token.json
