@@ -101,11 +101,47 @@ export default function Chat() {
         }
     }
 
-    // Helper to quick-set input from suggestion buttons
-    const handleSuggestion = (text: string) => {
-        setInput(text);
-        // Optional: auto-send on click
-        // sendMessage(); 
+    // Helper to quick-send messages from suggestion buttons
+    const handleSuggestion = async (text: string) => {
+        if (!text.trim()) return;
+
+        const userMessage: Message = { role: 'user', content: text };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setLoading(true);
+
+        try {
+            const agentUrl = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:8000';
+
+            const response = await fetch(`${agentUrl}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    history: messages
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const assistantMessage: Message = {
+                role: 'assistant',
+                content: data.response || 'No response received',
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            const errorMessage: Message = {
+                role: 'assistant',
+                content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

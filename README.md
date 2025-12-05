@@ -1,6 +1,8 @@
-# AdventureWorks Agent - MVP
+# Jerry Agent - Demo
 
-A simplified AI assistant with LangChain agent, Qwen LLM, and local tools for database queries and Gmail operations.
+A simplified AI assistant with LangChain agent, Qwen LLM, and local tools for database queries and Gmail operations. 
+
+We make use of the AdventureWorks SQL Database as a fictitious e-commerce business. The Agent is able to fetch emails, classify them by type and criticality, perform structured RAG on the company database to retrieve relevant information and send a reply.
 
 ## Architecture
 
@@ -18,6 +20,7 @@ Frontend (Next.js) → FastAPI Backend → LangChain Agent → Local Tools → P
 - Docker and Docker Compose
 - OpenRouter API key (for Qwen LLM)
 - Gmail OAuth credentials (optional, for email tools)
+- ports 3000, 8000 and 5432 available
 
 ## Setup
 
@@ -35,18 +38,8 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 QWEN_MODEL=qwen/qwen3-32b
 ```
 
-### 2. Gmail Setup (Optional)
 
-If you want to use Gmail tools:
-
-1. Place your `credentials.json` in the project root
-2. Run the Gmail auth setup:
-   ```bash
-   python3 setup_gmail_auth.py
-   ```
-3. This will create `token.json` which will be mounted in the Docker container
-
-### 3. Start the Application
+### 2. Start the Application
 
 ```bash
 # Build and start all services
@@ -56,10 +49,23 @@ docker-compose up --build
 docker-compose up -d --build
 ```
 
+(this takes a few minutes) 
+
 The services will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
+- Frontend: <http://localhost:3000>
+- Backend API: <http://localhost:8000>
 - PostgreSQL: localhost:5432
+
+
+### 5. Test the Application
+
+- Send a message from the `email_examples/` folder to [Email: bigdatabocconi25@gmail.com](mailto:bigdatabocconi25@gmail.com).
+
+Open the frontend at <http://localhost:3000>.
+
+Test the **check unread emails** button. Ask any other follow up question concerning products or people of the company.
+
+
 
 ### 4. Stop the Application
 
@@ -70,6 +76,7 @@ docker-compose down
 docker-compose down -v
 ```
 
+
 ## Features
 
 ### Available Tools
@@ -78,7 +85,7 @@ The agent has access to the following tools:
 
 **Database Tools:**
 - `query_database(query)` - Execute SELECT queries on AdventureWorks
-- `list_tables()` - List all available database tables
+- `list_tables_witn_schemas()` - List all available database tables
 - `describe_table(table_name)` - Get schema for a specific table
 
 **Gmail Tools:**
@@ -94,28 +101,6 @@ Try asking the Agent:
 - "Fetch my last 3 emails"
 - "Send an email to test@example.com with subject 'Test' and body 'Hello!'"
 
-## Development
-
-### Backend Development
-
-The backend agent service is in `src/agent/agent_service.py`.
-
-To run locally without Docker:
-```bash
-pip install -e .
-uvicorn agent.agent_service:app --reload
-```
-
-### Frontend Development
-
-The frontend is in the `frontend/` directory.
-
-To run locally without Docker:
-```bash
-cd frontend
-npm install
-npm run dev
-```
 
 ## Database
 
@@ -129,21 +114,6 @@ The AdventureWorks database is automatically initialized when the PostgreSQL con
 - **Qwen**: LLM via OpenRouter API
 
 ## Troubleshooting
-
-### Container Issues
-
-```bash
-# View logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f agent
-docker-compose logs -f frontend
-docker-compose logs -f postgres
-
-# Restart a specific service
-docker-compose restart agent
-```
 
 ### Database Issues
 
@@ -163,6 +133,7 @@ If Gmail tools aren't working:
 
 ## Future Enhancements
 
+- Train classification model on proprietary datasets
 - Add MCP client integration (currently tools are local)
 - Add conversation memory/history
 - Add more tools (e.g., web search, file operations)
