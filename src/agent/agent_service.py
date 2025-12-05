@@ -97,61 +97,55 @@ def query_database(query: str) -> str:
         return f"Error executing query: {str(e)}"
 
 @tool
-def list_tables() -> str:
-    """List all tables in the AdventureWorks database.
-    
+def list_tables_with_schemas() -> str:
+    """List all tables in the AdventureWorks database with their complete schemas.
+
     Returns:
-        A formatted string listing all available tables.
+        A formatted string listing all available tables with their column definitions.
     """
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                # Get all tables
                 cur.execute("""
-                    SELECT table_schema || '.' || table_name as full_name
+                    SELECT table_schema, table_name
                     FROM information_schema.tables
                     WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
                     ORDER BY table_schema, table_name;
                 """)
-                tables = [row[0] for row in cur.fetchall()]
-                return f"Available tables ({len(tables)}):\n" + "\n".join(tables)
-    except Exception as e:
-        logger.error(f"Error listing tables: {str(e)}")
-        return f"Error listing tables: {str(e)}"
+                tables = cur.fetchall()
 
-@tool
-def describe_table(table_name: str) -> str:
-    """Get the schema definition for a specific table.
-    
-    Args:
-        table_name: The name of the table (e.g., 'Person.Person' or 'sales.customer').
-        
-    Returns:
-        A formatted string describing the table columns and their types.
-    """
-    try:
-        schema, table = table_name.split('.') if '.' in table_name else ('public', table_name)
-        
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT column_name, data_type, is_nullable
-                    FROM information_schema.columns
-                    WHERE table_schema = %s AND table_name = %s
-                    ORDER BY ordinal_position;
-                """, (schema, table))
-                
-                columns = cur.fetchall()
-                if not columns:
-                    return f"Table '{table_name}' not found."
-                
-                result = f"Table: {table_name}\nColumns:\n"
-                for col_name, data_type, nullable in columns:
-                    result += f"  - {col_name}: {data_type} ({'NULL' if nullable == 'YES' else 'NOT NULL'})\n"
-                
+                if not tables:
+                    return "No tables found in the database."
+
+                result = f"Available tables ({len(tables)}):\n\n"
+
+                # For each table, get its columns
+                for schema, table in tables:
+                    full_name = f"{schema}.{table}"
+                    result += f"Table: {full_name}\n"
+
+                    cur.execute("""
+                        SELECT column_name, data_type, is_nullable
+                        FROM information_schema.columns
+                        WHERE table_schema = %s AND table_name = %s
+                        ORDER BY ordinal_position;
+                    """, (schema, table))
+
+                    columns = cur.fetchall()
+                    if columns:
+                        result += "Columns:\n"
+                        for col_name, data_type, nullable in columns:
+                            result += f"  - {col_name}: {data_type} ({'NULL' if nullable == 'YES' else 'NOT NULL'})\n"
+                    else:
+                        result += "  (No columns found)\n"
+
+                    result += "\n"
+
                 return result
     except Exception as e:
-        logger.error(f"Error describing table: {str(e)}")
-        return f"Error describing table: {str(e)}"
+        logger.error(f"Error listing tables with schemas: {str(e)}")
+        return f"Error listing tables with schemas: {str(e)}"
 
 # ============================================================================
 # Gmail Tools
@@ -288,34 +282,34 @@ def reply_to_email(message_id: str, body: str) -> str:
         logger.error(f"Error replying to email: {str(e)}")
         return f"Failed to reply to email: {str(e)}"
 
-@tool
-def send_email(to: str, subject: str, body: str) -> str:
-    """Send a NEW email using Gmail (not a reply). Use reply_to_email for replying to existing emails.
+# @tool
+# def send_email(to: str, subject: str, body: str) -> str:
+#     """Send a NEW email using Gmail (not a reply). Use reply_to_email for replying to existing emails.
     
-    Args:
-        to: The recipient's email address.
-        subject: The subject of the email.
-        body: The body text of the email.
+#     Args:
+#         to: The recipient's email address.
+#         subject: The subject of the email.
+#         body: The body text of the email.
         
-    Returns:
-        Success message with message ID or error message.
-    """
-    try:
-        service = get_gmail_service()
+#     Returns:
+#         Success message with message ID or error message.
+#     """
+#     try:
+#         service = get_gmail_service()
         
-        message = EmailMessage()
-        message.set_content(body)
-        message['To'] = to
-        message['Subject'] = subject
+#         message = EmailMessage()
+#         message.set_content(body)
+#         message['To'] = to
+#         message['Subject'] = subject
         
-        encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        create_message = {'raw': encoded_message}
+#         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+#         create_message = {'raw': encoded_message}
         
-        send_message = service.users().messages().send(userId="me", body=create_message).execute()
-        return f"Email sent successfully to {to}! Message ID: {send_message['id']}"
-    except Exception as e:
-        logger.error(f"Error sending email: {str(e)}")
-        return f"Failed to send email: {str(e)}"
+#         send_message = service.users().messages().send(userId="me", body=create_message).execute()
+#         return f"Email sent successfully to {to}! Message ID: {send_message['id']}"
+#     except Exception as e:
+#         logger.error(f"Error sending email: {str(e)}")
+#         return f"Failed to send email: {str(e)}"
 
 # ============================================================================
 # Simple Agent Implementation
@@ -382,9 +376,8 @@ When the user asks to check emails or respond to emails, follow this exact workf
 4. Never send an email without explicit user approval
 
 **Database Workflow:**
-1. First use list_tables to see available tables
-2. Use describe_table to understand the schema
-3. Then use query_database with a SELECT statement
+1. First use list_tables_with_schemas to see all available tables and their schemas
+2. Then use query_database with a SELECT statement based on the schema information
 
 **KEY TABLES SCHEMA (FALLBACK):**
 Use these table definitions if the specific "recipes" above don't cover the user's request.
@@ -424,8 +417,7 @@ def execute_agent(user_message: str, conversation_history: List[Dict] = None) ->
     # Define available tools
     tools = [
         query_database,
-        list_tables,
-        describe_table,
+        list_tables_with_schemas,
         fetch_emails,
         reply_to_email,  # For replying to existing emails
         send_email,      # For sending new emails
