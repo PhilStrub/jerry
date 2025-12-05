@@ -337,32 +337,49 @@ def reply_to_email(message_id: str, body: str) -> str:
 _email_classifier_tokenizer = None
 _email_classifier_model = None
 
-def get_email_classifier():
+def get_type_classifier():
     """Load email classifier model and tokenizer (singleton pattern)."""
-    global _email_classifier_tokenizer, _email_classifier_model
-    if _email_classifier_tokenizer is None or _email_classifier_model is None:
+    global _type_classifier_tokenizer, _type_classifier_model
+    if _type_classifier_tokenizer is None or _type_classifier_model is None:
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
-        model_path = os.path.join(os.path.dirname(__file__), "..", "models", "email_classifier_bert_tiny")
-        logger.info(f"Loading email classifier from {model_path}")
-        _email_classifier_tokenizer = AutoTokenizer.from_pretrained(model_path)
-        _email_classifier_model = AutoModelForSequenceClassification.from_pretrained(model_path)
-        logger.info(f"Email classifier loaded successfully")
-        logger.info(f"Model config id2label: {_email_classifier_model.config.id2label}")
-        logger.info(f"Model config label2id: {_email_classifier_model.config.label2id}")
-    return _email_classifier_tokenizer, _email_classifier_model
+        model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "bin", "type_classifier_bert_tiny"))
+        logger.info(f"Loading type classifier from {model_path}")
+        _type_classifier_tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        _type_classifier_model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+        logger.info(f"Type classifier loaded successfully")
+        logger.info(f"Model config id2label: {_type_classifier_model.config.id2label}")
+        logger.info(f"Model config label2id: {_type_classifier_model.config.label2id}")
+    return _type_classifier_tokenizer, _type_classifier_model
+
+_criticality_classifier_tokenizer = None
+_criticality_classifier_model = None
+
+def get_criticality_classifier():
+    """Load criticality classifier model and tokenizer (singleton pattern)."""
+    global _criticality_classifier_tokenizer, _criticality_classifier_model
+    if _criticality_classifier_tokenizer is None or _criticality_classifier_model is None:
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+        model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "bin", "criticality_classifier_bert_tiny"))
+        logger.info(f"Loading criticality classifier from {model_path}")
+        _criticality_classifier_tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        _criticality_classifier_model = AutoModelForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+        logger.info(f"Criticality classifier loaded successfully")
+        logger.info(f"Model config id2label: {_criticality_classifier_model.config.id2label}")
+        logger.info(f"Model config label2id: {_criticality_classifier_model.config.label2id}")
+    return _criticality_classifier_tokenizer, _criticality_classifier_model
 
 @tool
-def classify_email_type(email_text: str) -> str:
-    """Classify an email into one of three categories using ML model.
+def classify_email(email_text: str) -> str:
+    """Classify an email by type and criticality using ML models.
 
-    This tool uses a fine-tuned BERT model to categorize emails by type and criticality:
+    This tool uses two fine-tuned BERT models to categorize emails:
 
-    type:
+    Email Type:
     - inquiry: General questions or information requests
     - issue: Problems, bugs, or complaints
     - suggestion: Feedback, recommendations, or improvement ideas
 
-    criticality:
+    Email Criticality:
     - low: Low priority, can be answered by a junior employee
     - medium: Medium priority, can be answered by a senior employee
     - high: High priority, can be answered by a manager
@@ -373,27 +390,30 @@ def classify_email_type(email_text: str) -> str:
 
     Returns:
         JSON string containing:
-        - label: The predicted category (inquiry/issue/suggestion) and criticality (low/medium/high)
-        - confidence: Prediction confidence score (0-1)
-        - all_scores: Probabilities for all three categories
+        - type_label: The predicted type (inquiry/issue/suggestion)
+        - type_confidence: Type prediction confidence score (0-1)
+        - type_scores: Probabilities for all type categories
+        - criticality_label: The predicted criticality (low/medium/high)
+        - criticality_confidence: Criticality prediction confidence score (0-1)
+        - criticality_scores: Probabilities for all criticality levels
 
     Example:
         classify_email_type("Subject: Bug Report\\n\\nThe app crashes when I click submit")
-        # Returns: {"label": "issue", "confidence": 0.94, "all_scores": {...}}
+        # Returns: {
+        #   "type_label": "issue",
+        #   "type_confidence": 0.94,
+        #   "type_scores": {...},
+        #   "criticality_label": "high",
+        #   "criticality_confidence": 0.89,
+        #   "criticality_scores": {...}
+        # }
     """
     import json
 
     try:
-        tokenizer, model = get_email_classifier()
-
-        # Tokenize input
-        inputs = tokenizer(
-            email_text,
-            truncation=True,
-            padding="max_length",
-            max_length=256,
-            return_tensors="pt"
-        )
+        # Load both models
+        type_tokenizer, type_model = get_type_classifier()
+        crit_tokenizer, crit_model = get_criticality_classifier()
 
         # Detect device (GPU/MPS/CPU)
         device = torch.device(
@@ -401,47 +421,95 @@ def classify_email_type(email_text: str) -> str:
             "mps" if torch.backends.mps.is_available() else
             "cpu"
         )
-        model.to(device)
-        model.eval()
 
-        # Run inference
+        # ===== EMAIL TYPE CLASSIFICATION =====
+        type_inputs = type_tokenizer(
+            email_text,
+            truncation=True,
+            padding="max_length",
+            max_length=256,
+            return_tensors="pt"
+        )
+
+        type_model.to(device)
+        type_model.eval()
+
         with torch.no_grad():
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-            outputs = model(**inputs)
-            logits = outputs.logits
+            type_inputs = {k: v.to(device) for k, v in type_inputs.items()}
+            type_outputs = type_model(**type_inputs)
+            type_logits = type_outputs.logits
 
-        # Extract predictions
-        probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
-        predicted_id = int(np.argmax(probs))
+        type_probs = torch.softmax(type_logits, dim=-1).cpu().numpy()[0]
+        type_predicted_id = int(np.argmax(type_probs))
 
-        # Get label mappings from model config
-        id2label = model.config.id2label
-
-        # Handle both integer and string keys in id2label (transformers uses int keys)
-        if predicted_id in id2label:
-            predicted_label = id2label[predicted_id]
-        elif str(predicted_id) in id2label:
-            predicted_label = id2label[str(predicted_id)]
+        # Get type label mappings
+        type_id2label = type_model.config.id2label
+        if type_predicted_id in type_id2label:
+            type_label = type_id2label[type_predicted_id]
+        elif str(type_predicted_id) in type_id2label:
+            type_label = type_id2label[str(type_predicted_id)]
         else:
-            logger.error(f"Predicted ID {predicted_id} not found in id2label: {id2label}")
-            raise KeyError(f"Label mapping not found for predicted ID: {predicted_id}")
+            logger.error(f"Type ID {type_predicted_id} not found in id2label")
+            raise KeyError(f"Type label mapping not found for ID: {type_predicted_id}")
 
-        # Build result - handle both integer and string keys
-        all_scores = {}
-        for i in range(len(probs)):
-            if i in id2label:
-                label = id2label[i]
-            elif str(i) in id2label:
-                label = id2label[str(i)]
+        type_scores = {}
+        for i in range(len(type_probs)):
+            if i in type_id2label:
+                label = type_id2label[i]
+            elif str(i) in type_id2label:
+                label = type_id2label[str(i)]
             else:
-                logger.warning(f"Label ID {i} not found in id2label, skipping")
                 continue
-            all_scores[label] = float(probs[i])
+            type_scores[label] = float(type_probs[i])
 
+        # ===== CRITICALITY CLASSIFICATION =====
+        crit_inputs = crit_tokenizer(
+            email_text,
+            truncation=True,
+            padding="max_length",
+            max_length=256,
+            return_tensors="pt"
+        )
+
+        crit_model.to(device)
+        crit_model.eval()
+
+        with torch.no_grad():
+            crit_inputs = {k: v.to(device) for k, v in crit_inputs.items()}
+            crit_outputs = crit_model(**crit_inputs)
+            crit_logits = crit_outputs.logits
+
+        crit_probs = torch.softmax(crit_logits, dim=-1).cpu().numpy()[0]
+        crit_predicted_id = int(np.argmax(crit_probs))
+
+        # Get criticality label mappings
+        crit_id2label = crit_model.config.id2label
+        if crit_predicted_id in crit_id2label:
+            crit_label = crit_id2label[crit_predicted_id]
+        elif str(crit_predicted_id) in crit_id2label:
+            crit_label = crit_id2label[str(crit_predicted_id)]
+        else:
+            logger.error(f"Criticality ID {crit_predicted_id} not found in id2label")
+            raise KeyError(f"Criticality label mapping not found for ID: {crit_predicted_id}")
+
+        crit_scores = {}
+        for i in range(len(crit_probs)):
+            if i in crit_id2label:
+                label = crit_id2label[i]
+            elif str(i) in crit_id2label:
+                label = crit_id2label[str(i)]
+            else:
+                continue
+            crit_scores[label] = float(crit_probs[i])
+
+        # ===== BUILD COMBINED RESULT =====
         result = {
-            "label": predicted_label,
-            "confidence": float(probs[predicted_id]),
-            "all_scores": all_scores
+            "type_label": type_label,
+            "type_confidence": float(type_probs[type_predicted_id]),
+            "type_scores": type_scores,
+            "criticality_label": crit_label,
+            "criticality_confidence": float(crit_probs[crit_predicted_id]),
+            "criticality_scores": crit_scores
         }
 
         return json.dumps(result, indent=2)
@@ -450,8 +518,10 @@ def classify_email_type(email_text: str) -> str:
         logger.error(f"Error classifying email: {str(e)}", exc_info=True)
         return json.dumps({
             "error": f"Classification failed: {str(e)}",
-            "label": "unknown",
-            "confidence": 0.0
+            "type_label": "unknown",
+            "type_confidence": 0.0,
+            "criticality_label": "unknown",
+            "criticality_confidence": 0.0
         })
 
 # ============================================================================
@@ -497,15 +567,26 @@ You can help users with:
    - **Columns**: `soh.salesordernumber`, `soh.orderdate`, `soh.status`, `soh.totaldue`
 
 **EMAIL CLASSIFICATION:**
-You have access to an ML-powered email classifier that categorizes emails into:
+You have access to an ML-powered email classifier that categorizes emails by both TYPE and CRITICALITY:
+
+Email Types:
 - **inquiry**: General questions, information requests, "how do I..." questions
 - **issue**: Problems, bugs, complaints, error reports, "something is broken"
 - **suggestion**: Feedback, feature requests, recommendations, "you should..."
 
+Criticality Levels:
+- **low**: Low priority, routine questions, can be handled by junior staff
+- **medium**: Medium priority, requires experienced staff, moderate business impact
+- **high**: High priority, urgent issues, requires manager attention, significant business impact
+
 To classify an email:
 1. Use classify_email_type with the full email text (preferably formatted as "Subject: <subject>\\n\\n<body>")
-2. The tool returns the predicted category, confidence score, and probabilities for all categories
-3. Use this classification to route emails to appropriate departments or prioritize responses
+2. The tool returns both type and criticality predictions with confidence scores
+3. Use these classifications to:
+   - Route emails to appropriate departments based on type
+   - Prioritize responses based on criticality (high criticality = respond first)
+   - Escalate high-criticality issues to senior staff or managers
+   - Batch low-criticality inquiries for junior staff to handle
 
 **RULES OF ENGAGEMENT - FOLLOW STRICTLY:**
 

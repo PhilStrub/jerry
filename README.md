@@ -65,6 +65,8 @@ Open the frontend at <http://localhost:3000>.
 
 Test the **check unread emails** button. Ask any other follow up question concerning products or people of the company.
 
+You will be able to see also the individual tool calls the agent makes.
+
 
 
 ### 4. Stop the Application
