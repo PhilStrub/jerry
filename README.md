@@ -98,12 +98,12 @@ Try asking the Agent:
 
 ### Backend Development
 
-The backend agent service is in `src/jerry/agent_service.py`.
+The backend agent service is in `src/agent/agent_service.py`.
 
 To run locally without Docker:
 ```bash
 pip install -e .
-uvicorn jerry.agent_service:app --reload
+uvicorn agent.agent_service:app --reload
 ```
 
 ### Frontend Development
