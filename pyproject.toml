@@ -1,18 +1,24 @@
 [project]
-name = "anfora-data-plane"
+name = "jerry-data-plane"
 version = "0.1.0"
-description = "Data plane for Anfora - Spark-based data processing and API server"
+description = "Data plane for Jerry - Spark-based data processing and API server"
 requires-python = ">=3.11"
 dependencies = [
-    "pyspark>=4.0.0",
-    "delta-spark>=4.0.0",
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
-    "psycopg2-binary>=2.9.9",
-    "pydantic>=2.5.0",
-    "pymongo>=4.6.0",
-    "requests>=2.31.0",
+    "psycopg>=3.1.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.1.1",
+    "google-api-python-client>=2.100.0",
+    "langchain==0.1.20",
+    "langchain-openai==0.1.6",
+    "langchain-community==0.0.38",
+    "httpx>=0.25.0",
+    "transformers>=4.57.3",
+    "torch>=2.0.0",
 ]
+
 
 [dependency-groups]
 dev = [
@@ -24,6 +30,7 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build]
-packages = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]
+
 
