@@ -18,7 +18,7 @@ Frontend (Next.js) → FastAPI Backend → LangChain Agent → Local Tools → P
 ## Prerequisites
 
 - Docker and Docker Compose
-- OpenRouter API key (for Qwen LLM)
+- IMPORTANT: OpenRouter API key (for Qwen LLM)
 - Gmail OAuth credentials (optional, for email tools)
 - ports 3000, 8000 and 5432 available
 
@@ -86,13 +86,15 @@ docker-compose down -v
 The agent has access to the following tools:
 
 **Database Tools:**
-- `query_database(query)` - Execute SELECT queries on AdventureWorks
-- `list_tables_witn_schemas()` - List all available database tables
-- `describe_table(table_name)` - Get schema for a specific table
+- `query_database(query)` - Execute read-only SELECT queries on the AdventureWorks database
+- `list_tables_with_schemas()` - List all available database tables with their complete schemas and column definitions
 
 **Gmail Tools:**
-- `fetch_emails(limit)` - Fetch recent emails from Gmail
-- `send_email(to, subject, body)` - Send emails via Gmail
+- `fetch_emails(limit)` - Fetch recent UNREAD emails from Gmail inbox (default: 5, max: 20)
+- `reply_to_email(message_id, body)` - Reply to an email using its message ID, creates threaded replies and marks original as read
+
+**Email Classification Tools:**
+- `classify_email(email_text)` - Classify emails by type (inquiry/issue/suggestion) and criticality (low/medium/high) using fine-tuned BERT models
 
 ### Example Queries
 
@@ -100,8 +102,11 @@ Try asking the Agent:
 - "List all tables in the database"
 - "Show me the schema for the Person.Person table"
 - "Query the top 5 customers from sales.customer"
-- "Fetch my last 3 emails"
-- "Send an email to test@example.com with subject 'Test' and body 'Hello!'"
+- "Check my unread emails"
+- "Classify this email: [paste email text here]"
+- "Reply to the email from [sender] about [topic]"
+- "Who should I contact about billing issues?"
+- "What Mountain-100 bikes do we have in stock?"
 
 
 ## Database
@@ -116,6 +121,11 @@ The AdventureWorks database is automatically initialized when the PostgreSQL con
 - **Qwen**: LLM via OpenRouter API
 
 ## Troubleshooting
+
+### Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+The cause of the error is the fact that the API key for Openrouter is not valid or is expired. Try putting in the `.env` file a new key.
+
 
 ### Database Issues
 
